@@ -1,0 +1,190 @@
+import { useState, useEffect, useCallback } from 'react'
+import { Toaster, toast } from 'sonner'
+import { Haptics, ImpactStyle } from '@capacitor/haptics'
+import { RefreshCw, Plus, Settings } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  getScriptUrl,
+  setScriptUrl as saveScriptUrl,
+  getCategories as fetchCategories,
+  getExpenses as fetchExpenses,
+  getSummary as fetchSummary,
+  addExpense as postExpense,
+  syncPendingExpenses,
+  getPendingForMonth,
+  getPendingExpenses,
+  DEFAULT_CATEGORIES,
+} from '@/lib/sheetsApi'
+import MonthSelector from '@/components/MonthSelector'
+import MonthlySummary from '@/components/MonthlySummary'
+import ExpenseList from '@/components/ExpenseList'
+import AddExpenseModal from '@/components/AddExpenseModal'
+import SetupScreen from '@/components/SetupScreen'
+
+const MONTHS = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+]
+
+function App() {
+  const [scriptUrl, setScriptUrl] = useState(getScriptUrl())
+  const [showSetup, setShowSetup] = useState(!scriptUrl)
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
+  const [summary, setSummary] = useState(null)
+  const [expenses, setExpenses] = useState([])
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [pendingCount, setPendingCount] = useState(getPendingExpenses().length)
+  const [syncing, setSyncing] = useState(false)
+
+  const monthName = MONTHS[selectedMonth]
+
+  const loadData = useCallback(async () => {
+    if (!scriptUrl) return
+    setLoading(true)
+    try {
+      const [s, e] = await Promise.all([
+        fetchSummary(monthName),
+        fetchExpenses(monthName),
+      ])
+      setSummary(s)
+      setExpenses(e.expenses || [])
+    } catch (err) {
+      toast.error('Error cargando datos: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+    setPendingCount(getPendingExpenses().length)
+  }, [scriptUrl, monthName])
+
+  const loadCategories = useCallback(async () => {
+    if (!scriptUrl) return
+    try {
+      const data = await fetchCategories()
+      if (data.categories?.length > 0) {
+        setCategories(data.categories)
+        return
+      }
+    } catch (err) {
+      console.warn('Error cargando categorías, usando fallback:', err.message)
+    }
+    setCategories((prev) => prev.length > 0 ? prev : DEFAULT_CATEGORIES)
+  }, [scriptUrl])
+
+  useEffect(() => { loadCategories() }, [loadCategories])
+  useEffect(() => { loadData() }, [loadData])
+
+  const handleOpenAddModal = () => {
+    setShowAddModal(true)
+    if (categories.length === 0) loadCategories()
+  }
+
+  const handleAddExpense = async (category, amount) => {
+    const result = await postExpense(monthName, category, amount)
+    try { await Haptics.impact({ style: ImpactStyle.Light }) } catch { /* web */ }
+    if (result.pending) {
+      toast.info('Sin conexión — gasto guardado localmente')
+    } else {
+      toast.success('Gasto añadido correctamente')
+    }
+    setShowAddModal(false)
+    setPendingCount(getPendingExpenses().length)
+    loadData()
+  }
+
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      const { synced, failed } = await syncPendingExpenses()
+      if (synced > 0) {
+        toast.success(`${synced} gasto(s) sincronizado(s)`)
+      }
+      if (failed > 0) {
+        toast.error(`${failed} gasto(s) no se pudieron sincronizar`)
+      }
+      if (synced === 0 && failed === 0) {
+        toast.info('Nada pendiente de sincronizar')
+      }
+      setPendingCount(getPendingExpenses().length)
+      if (synced > 0) loadData()
+    } catch (err) {
+      toast.error('Error sincronizando: ' + err.message)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const handleSetupSave = (url) => {
+    saveScriptUrl(url)
+    setScriptUrl(url)
+    setShowSetup(false)
+  }
+
+  if (showSetup) {
+    return (
+      <>
+        <SetupScreen onSave={handleSetupSave} initialUrl={scriptUrl} />
+        <Toaster />
+      </>
+    )
+  }
+
+  return (
+    <>
+      <div className="flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="flex items-center justify-between px-4 pt-12 pb-4">
+          <h1 className="text-xl font-bold text-foreground">💰 Control Gastos</h1>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" onClick={handleSync} disabled={loading || syncing} className="relative">
+              <RefreshCw className={`h-5 w-5 ${(loading || syncing) ? 'animate-spin' : ''}`} />
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                  {pendingCount}
+                </span>
+              )}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setShowSetup(true)}>
+              <Settings className="h-5 w-5" />
+            </Button>
+          </div>
+        </header>
+
+        {/* Month selector */}
+        <MonthSelector selected={selectedMonth} onChange={setSelectedMonth} />
+
+        {/* Summary */}
+        <MonthlySummary summary={summary} loading={loading} />
+
+        {/* Expense list */}
+        <div className="flex-1 px-4 pb-24">
+          <h2 className="text-lg font-semibold mb-3 text-foreground">
+            Gastos Variables
+          </h2>
+          <ExpenseList expenses={expenses} loading={loading} pending={getPendingForMonth(monthName)} />
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={() => handleOpenAddModal()}
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
+        >
+          <Plus className="h-7 w-7" />
+        </button>
+      </div>
+
+      {showAddModal && (
+        <AddExpenseModal
+          categories={categories}
+          onAdd={handleAddExpense}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      <Toaster />
+    </>
+  )
+}
+
+export default App
