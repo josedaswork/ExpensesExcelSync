@@ -1,9 +1,18 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Copy, Check } from 'lucide-react'
+import scriptCode from '../../Files/google-apps-script.js?raw'
 
 export default function SetupScreen({ onSave, initialUrl }) {
   const [url, setUrl] = useState(initialUrl || '')
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(scriptCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
@@ -41,9 +50,7 @@ export default function SetupScreen({ onSave, initialUrl }) {
               Ve a <strong>Extensiones → Apps Script</strong>
             </li>
             <li>
-              Pega el código del archivo{' '}
-              <code className="text-primary">google-apps-script.js</code> (está
-              en la carpeta Files)
+              Pega el código del script (cópialo con el botón de abajo)
             </li>
             <li>
               Haz clic en <strong>Implementar → Nueva implementación</strong>
@@ -59,6 +66,24 @@ export default function SetupScreen({ onSave, initialUrl }) {
             </li>
             <li>Copia la URL y pégala aquí arriba</li>
           </ol>
+
+          <Button
+            variant="outline"
+            className="w-full mt-3"
+            onClick={handleCopy}
+          >
+            {copied ? (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Código copiado
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4 mr-2" />
+                Copiar código Apps Script
+              </>
+            )}
+          </Button>
         </div>
       </div>
     </div>

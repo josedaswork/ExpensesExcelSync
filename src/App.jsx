@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Toaster, toast } from 'sonner'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { RefreshCw, Plus, Settings } from 'lucide-react'
@@ -9,7 +9,9 @@ import {
   getCategories as fetchCategories,
   getExpenses as fetchExpenses,
   getSummary as fetchSummary,
-  addExpense as postExpense,
+  addExpenseDirect,
+  addToPending,
+  updateExpense as apiUpdateExpense,
   syncPendingExpenses,
   getPendingForMonth,
   getPendingExpenses,
@@ -19,6 +21,7 @@ import MonthSelector from '@/components/MonthSelector'
 import MonthlySummary from '@/components/MonthlySummary'
 import ExpenseList from '@/components/ExpenseList'
 import AddExpenseModal from '@/components/AddExpenseModal'
+import EditExpenseModal from '@/components/EditExpenseModal'
 import SetupScreen from '@/components/SetupScreen'
 
 const MONTHS = [
@@ -35,8 +38,12 @@ function App() {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [editingExpense, setEditingExpense] = useState(null)
   const [pendingCount, setPendingCount] = useState(getPendingExpenses().length)
   const [syncing, setSyncing] = useState(false)
+  const [sendingExpenses, setSendingExpenses] = useState([])
+  const queueRef = useRef([])
+  const processingRef = useRef(false)
 
   const monthName = MONTHS[selectedMonth]
 
@@ -80,17 +87,51 @@ function App() {
     if (categories.length === 0) loadCategories()
   }
 
-  const handleAddExpense = async (category, amount) => {
-    const result = await postExpense(monthName, category, amount)
-    try { await Haptics.impact({ style: ImpactStyle.Light }) } catch { /* web */ }
-    if (result.pending) {
-      toast.info('Sin conexión — gasto guardado localmente')
-    } else {
-      toast.success('Gasto añadido correctamente')
-    }
+  const handleAddExpense = (category, amount) => {
+    const expense = { id: `q_${Date.now()}_${Math.random().toString(36).slice(2)}`, month: monthName, category, amount }
+    queueRef.current = [...queueRef.current, expense]
+    setSendingExpenses([...queueRef.current])
     setShowAddModal(false)
-    setPendingCount(getPendingExpenses().length)
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+    toast('Enviando gasto...', { icon: '📤', duration: 1500 })
+    processQueue()
+  }
+
+  const processQueue = async () => {
+    if (processingRef.current) return
+    processingRef.current = true
+
+    while (queueRef.current.length > 0) {
+      const item = queueRef.current[0]
+      try {
+        await addExpenseDirect(item.month, item.category, item.amount)
+        queueRef.current = queueRef.current.slice(1)
+        setSendingExpenses([...queueRef.current])
+        toast.success(`"${item.category}" añadido`)
+      } catch {
+        addToPending(item.month, item.category, item.amount)
+        queueRef.current = queueRef.current.slice(1)
+        setSendingExpenses([...queueRef.current])
+        setPendingCount(getPendingExpenses().length)
+        toast.error(`Sin conexión — "${item.category}" guardado`)
+      }
+    }
+
+    processingRef.current = false
     loadData()
+  }
+
+  const handleEditExpense = async (expense, newCategory, newAmount) => {
+    setEditingExpense(null)
+    const toastId = toast.loading('Actualizando gasto...')
+    try {
+      await apiUpdateExpense(monthName, expense.row, expense.category, expense.amount, newCategory, newAmount)
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+      toast.success('Gasto actualizado', { id: toastId })
+      loadData()
+    } catch (err) {
+      toast.error('Error actualizando: ' + err.message, { id: toastId })
+    }
   }
 
   const handleSync = async () => {
@@ -162,7 +203,13 @@ function App() {
           <h2 className="text-lg font-semibold mb-3 text-foreground">
             Gastos Variables
           </h2>
-          <ExpenseList expenses={expenses} loading={loading} pending={getPendingForMonth(monthName)} />
+          <ExpenseList
+            expenses={expenses}
+            loading={loading}
+            pending={getPendingForMonth(monthName)}
+            sending={sendingExpenses.filter((e) => e.month === monthName)}
+            onEdit={setEditingExpense}
+          />
         </div>
 
         {/* FAB */}
@@ -179,6 +226,15 @@ function App() {
           categories={categories}
           onAdd={handleAddExpense}
           onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {editingExpense && (
+        <EditExpenseModal
+          expense={editingExpense}
+          categories={categories}
+          onSave={handleEditExpense}
+          onClose={() => setEditingExpense(null)}
         />
       )}
 

@@ -49,6 +49,16 @@ function doGet(e) {
         e.parameter.category,
         parseFloat(e.parameter.amount)
       );
+    } else if (action === 'updateExpense') {
+      result = updateExpense(
+        ss,
+        e.parameter.month,
+        parseInt(e.parameter.row, 10),
+        e.parameter.oldCategory,
+        parseFloat(e.parameter.oldAmount),
+        e.parameter.newCategory,
+        parseFloat(e.parameter.newAmount)
+      );
     } else {
       result = { error: 'Acción desconocida: ' + action };
     }
@@ -70,6 +80,16 @@ function doPost(e) {
   try {
     if (data.action === 'addExpense') {
       result = addExpense(ss, data.month, data.category, parseFloat(data.amount));
+    } else if (data.action === 'updateExpense') {
+      result = updateExpense(
+        ss,
+        data.month,
+        parseInt(data.row, 10),
+        data.oldCategory,
+        parseFloat(data.oldAmount),
+        data.newCategory,
+        parseFloat(data.newAmount)
+      );
     } else {
       result = { error: 'Acción desconocida' };
     }
@@ -243,6 +263,68 @@ function addExpense(ss, month, category, amount) {
     row: nextRow,
     category: category,
     amount: amount,
+    month: month
+  };
+}
+
+/**
+ * Actualiza la categoría y/o importe de un gasto variable existente.
+ *
+ * Primero verifica que la fila indicada contenga los valores originales.
+ * Si no coinciden (porque se insertaron/borraron filas), busca el gasto
+ * por categoría + importe, priorizando la fila más cercana a la original.
+ */
+function updateExpense(ss, month, row, oldCategory, oldAmount, newCategory, newAmount) {
+  var ws = ss.getSheetByName(month);
+  if (!ws) return { error: 'Mes no encontrado: ' + month };
+
+  var cols = findVariableExpenseCols(ws);
+
+  // Verificar que la fila indicada tenga los valores esperados
+  var currentCat = String(ws.getRange(row, cols.catCol).getValue()).trim();
+  var currentAmt = parseFloat(ws.getRange(row, cols.amtCol).getValue()) || 0;
+
+  var targetRow = row;
+
+  if (currentCat !== oldCategory || Math.abs(currentAmt - oldAmount) > 0.01) {
+    // No coincide → buscar en todas las filas
+    var lastRow = ws.getLastRow();
+    targetRow = -1;
+
+    if (lastRow >= 13) {
+      var numRows = lastRow - 12;
+      var catData = ws.getRange(13, cols.catCol, numRows, 1).getValues();
+      var amtData = ws.getRange(13, cols.amtCol, numRows, 1).getValues();
+      var bestDist = Infinity;
+
+      for (var i = 0; i < catData.length; i++) {
+        var r = i + 13;
+        var cat = String(catData[i][0]).trim();
+        var amt = parseFloat(amtData[i][0]) || 0;
+
+        if (cat === oldCategory && Math.abs(amt - oldAmount) < 0.01) {
+          var dist = Math.abs(r - row);
+          if (dist < bestDist) {
+            bestDist = dist;
+            targetRow = r;
+          }
+        }
+      }
+    }
+
+    if (targetRow === -1) {
+      return { error: 'No se encontró el gasto a actualizar' };
+    }
+  }
+
+  ws.getRange(targetRow, cols.catCol).setValue(newCategory);
+  ws.getRange(targetRow, cols.amtCol).setValue(newAmount);
+
+  return {
+    success: true,
+    row: targetRow,
+    category: newCategory,
+    amount: newAmount,
     month: month
   };
 }

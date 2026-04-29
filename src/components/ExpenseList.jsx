@@ -22,7 +22,7 @@ function hashColor(str) {
 const fmt = (v) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v)
 
-export default function ExpenseList({ expenses, loading, pending = [] }) {
+export default function ExpenseList({ expenses, loading, pending = [], sending = [], onEdit }) {
   if (loading) {
     return (
       <div className="space-y-2">
@@ -39,7 +39,7 @@ export default function ExpenseList({ expenses, loading, pending = [] }) {
     )
   }
 
-  if (expenses.length === 0 && pending.length === 0) {
+  if (expenses.length === 0 && pending.length === 0 && sending.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <p className="text-4xl mb-3">📭</p>
@@ -50,6 +50,26 @@ export default function ExpenseList({ expenses, loading, pending = [] }) {
 
   return (
     <div className="space-y-2">
+      {sending.map((exp) => (
+        <div key={exp.id} className="glass-card rounded-xl p-3 flex items-center gap-3 border border-dashed border-primary/40 opacity-70">
+          <div
+            className={`w-10 h-10 rounded-full ${hashColor(exp.category)} flex items-center justify-center`}
+          >
+            <span className="text-white font-bold text-sm">
+              {exp.category.charAt(0).toUpperCase()}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">
+              {exp.category}
+            </p>
+            <p className="text-[10px] text-primary animate-pulse">Enviando...</p>
+          </div>
+          <p className="text-sm font-bold text-foreground whitespace-nowrap">
+            {fmt(exp.amount)}
+          </p>
+        </div>
+      ))}
       {pending.map((exp) => (
         <div key={exp.id} className="glass-card rounded-xl p-3 flex items-center gap-3 border border-dashed border-primary/40">
           <div
@@ -71,7 +91,11 @@ export default function ExpenseList({ expenses, loading, pending = [] }) {
         </div>
       ))}
       {expenses.map((exp, i) => (
-        <div key={i} className="glass-card rounded-xl p-3 flex items-center gap-3">
+        <div
+          key={i}
+          className="glass-card rounded-xl p-3 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
+          onClick={() => onEdit?.(exp)}
+        >
           <div
             className={`w-10 h-10 rounded-full ${hashColor(exp.category)} flex items-center justify-center`}
           >

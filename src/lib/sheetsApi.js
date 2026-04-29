@@ -138,6 +138,33 @@ export async function addExpense(month, category, amount) {
   }
 }
 
+export async function addExpenseDirect(month, category, amount) {
+  return await callApi({
+    action: 'addExpense',
+    month,
+    category,
+    amount: String(amount),
+  })
+}
+
+export function addToPending(month, category, amount) {
+  const pending = getPendingExpenses()
+  pending.push({ month, category, amount, id: Date.now() })
+  savePendingExpenses(pending)
+}
+
+export async function updateExpense(month, row, oldCategory, oldAmount, newCategory, newAmount) {
+  return await callApi({
+    action: 'updateExpense',
+    month,
+    row: String(row),
+    oldCategory,
+    oldAmount: String(oldAmount),
+    newCategory,
+    newAmount: String(newAmount),
+  })
+}
+
 export async function syncPendingExpenses() {
   const pending = getPendingExpenses()
   if (pending.length === 0) return { synced: 0, failed: 0 }
