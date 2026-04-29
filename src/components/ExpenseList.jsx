@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { ArrowUpDown } from 'lucide-react'
+
 const COLORS = [
   'bg-blue-500',
   'bg-green-500',
@@ -23,6 +26,8 @@ const fmt = (v) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v)
 
 export default function ExpenseList({ expenses, loading, pending = [], sending = [], onEdit }) {
+  const [reversed, setReversed] = useState(true)
+
   if (loading) {
     return (
       <div className="space-y-2">
@@ -48,8 +53,19 @@ export default function ExpenseList({ expenses, loading, pending = [], sending =
     )
   }
 
+  const displayExpenses = reversed ? [...expenses].reverse() : expenses
+
   return (
     <div className="space-y-2">
+      {expenses.length > 1 && (
+        <button
+          onClick={() => setReversed((r) => !r)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-1"
+        >
+          <ArrowUpDown className="h-3.5 w-3.5" />
+          {reversed ? 'Recientes primero' : 'Antiguos primero'}
+        </button>
+      )}
       {sending.map((exp) => (
         <div key={exp.id} className="glass-card rounded-xl p-3 flex items-center gap-3 border border-dashed border-primary/40 opacity-70">
           <div
@@ -90,7 +106,7 @@ export default function ExpenseList({ expenses, loading, pending = [], sending =
           </p>
         </div>
       ))}
-      {expenses.map((exp, i) => (
+      {displayExpenses.map((exp, i) => (
         <div
           key={i}
           className="glass-card rounded-xl p-3 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
