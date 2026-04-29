@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# Android build artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+
+# Capacitor generated (will be recreated by cap sync)
+# Keep these committed so CI can build without cap sync issues:
+# android/capacitor-cordova-android-plugins/
+# android/capacitor.settings.gradle
+
+# Logs
+*.log
+npm-debug.log*

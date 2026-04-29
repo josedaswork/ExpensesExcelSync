@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">App Template</string>
-    <string name="title_activity_main">App Template</string>
-    <string name="package_name">com.apptemplate.app</string>
-    <string name="custom_url_scheme">com.apptemplate.app</string>
+    <string name="app_name">Control Gastos</string>
+    <string name="title_activity_main">Control Gastos</string>
+    <string name="package_name">com.controlgastos.app</string>
+    <string name="custom_url_scheme">com.controlgastos.app</string>
 </resources>

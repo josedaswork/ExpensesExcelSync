@@ -1,4 +1,4 @@
-package com.apptemplate.app;
+package com.controlgastos.app;
 
 import com.getcapacitor.BridgeActivity;
 
