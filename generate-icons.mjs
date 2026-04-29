@@ -11,11 +11,11 @@ const androidResDir = path.join(__dirname, 'android', 'app', 'src', 'main', 'res
 const publicDir = path.join(__dirname, 'public');
 
 const androidSizes = [
-  { name: 'mipmap-mdpi', size: 48 },
-  { name: 'mipmap-hdpi', size: 72 },
-  { name: 'mipmap-xhdpi', size: 96 },
-  { name: 'mipmap-xxhdpi', size: 144 },
-  { name: 'mipmap-xxxhdpi', size: 192 },
+  { name: 'mipmap-mdpi', size: 48, fgSize: 108 },
+  { name: 'mipmap-hdpi', size: 72, fgSize: 162 },
+  { name: 'mipmap-xhdpi', size: 96, fgSize: 216 },
+  { name: 'mipmap-xxhdpi', size: 144, fgSize: 324 },
+  { name: 'mipmap-xxxhdpi', size: 192, fgSize: 432 },
 ];
 
 const webOutputs = [
@@ -26,13 +26,18 @@ const webOutputs = [
 
 async function generate() {
   // ── Android icons → android/app/src/main/res/mipmap-*/
-  for (const { name, size } of androidSizes) {
+  for (const { name, size, fgSize } of androidSizes) {
     const dir = path.join(androidResDir, name);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     const buf = await sharp(svgPath).resize(size, size).png().toBuffer();
     await sharp(buf).toFile(path.join(dir, 'ic_launcher.png'));
     await sharp(buf).toFile(path.join(dir, 'ic_launcher_round.png'));
-    console.log(`  ✓ ${name} (${size}x${size})`);
+    // Foreground for adaptive icons: icon centered on transparent background
+    const fgBuf = await sharp(svgPath).resize(Math.round(fgSize * 0.6), Math.round(fgSize * 0.6)).png().toBuffer();
+    await sharp({
+      create: { width: fgSize, height: fgSize, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } }
+    }).composite([{ input: fgBuf, gravity: 'centre' }]).png().toFile(path.join(dir, 'ic_launcher_foreground.png'));
+    console.log(`  ✓ ${name} (${size}x${size}, fg ${fgSize}x${fgSize})`);
   }
 
   // ── Web / PWA icons → public/
