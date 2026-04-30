@@ -1,8 +1,6 @@
 const STORAGE_KEY = 'sheets_script_url'
-const CATEGORIES_KEY = 'sheets_categories_cache'
 const DATA_CACHE_KEY = 'sheets_data_cache'
 const PENDING_KEY = 'sheets_pending_expenses'
-const CACHE_TTL = 24 * 60 * 60 * 1000 // 24h
 
 export function getScriptUrl() {
   return localStorage.getItem(STORAGE_KEY) || ''
@@ -68,39 +66,14 @@ export function getCachedExpenses(month) {
   return getCacheEntry('expenses_' + month)
 }
 
-export function getCachedCategories() {
-  const cached = localStorage.getItem(CATEGORIES_KEY)
-  if (!cached) return null
-  try {
-    const { data } = JSON.parse(cached)
-    return data.categories?.length > 0 ? data.categories : null
-  } catch { return null }
-}
-
 /* ---- Categorías ---- */
 
 export async function getCategories() {
-  const cached = localStorage.getItem(CATEGORIES_KEY)
-  if (cached) {
-    try {
-      const { data, ts } = JSON.parse(cached)
-      if (Date.now() - ts < CACHE_TTL && data.categories?.length > 0) return data
-    } catch { /* cache corrupta, refetch */ }
-  }
-
   const data = await callApi({ action: 'getCategories' })
-  if (data.categories?.length > 0) {
-    localStorage.setItem(CATEGORIES_KEY, JSON.stringify({ data, ts: Date.now() }))
-  }
   return data
 }
 
-export function clearCategoriesCache() {
-  localStorage.removeItem(CATEGORIES_KEY)
-}
-
 export function clearAllCache() {
-  localStorage.removeItem(CATEGORIES_KEY)
   localStorage.removeItem(DATA_CACHE_KEY)
 }
 
@@ -140,24 +113,6 @@ export function getPendingExpenses() {
 
 function savePendingExpenses(list) {
   localStorage.setItem(PENDING_KEY, JSON.stringify(list))
-}
-
-export async function addExpense(month, category, amount) {
-  try {
-    const result = await callApi({
-      action: 'addExpense',
-      month,
-      category,
-      amount: String(amount),
-    })
-    return result
-  } catch {
-    // Sin conexión: guardar en cola
-    const pending = getPendingExpenses()
-    pending.push({ month, category, amount, id: Date.now() })
-    savePendingExpenses(pending)
-    return { success: true, pending: true, category, amount, month }
-  }
 }
 
 export async function addExpenseDirect(month, category, amount) {

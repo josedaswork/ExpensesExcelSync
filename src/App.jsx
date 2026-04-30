@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Toaster, toast } from 'sonner'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { RefreshCw, Plus, Settings } from 'lucide-react'
@@ -16,11 +16,9 @@ import {
   getPendingForMonth,
   getPendingExpenses,
   DEFAULT_CATEGORIES,
-  clearCategoriesCache,
   clearAllCache,
   getCachedSummary,
   getCachedExpenses,
-  getCachedCategories,
 } from '@/lib/sheetsApi'
 import MonthSelector from '@/components/MonthSelector'
 import MonthlySummary from '@/components/MonthlySummary'
@@ -91,7 +89,6 @@ function App() {
 
     // Always fetch fresh categories from server
     try {
-      clearCategoriesCache()
       const data = await fetchCategories()
       if (data.categories?.length > 0) {
         setCategories(data.categories)
@@ -99,12 +96,6 @@ function App() {
       }
     } catch (err) {
       console.warn('Error cargando categorías, usando fallback:', err.message)
-      // On error, try cached as fallback
-      const cachedCats = getCachedCategories()
-      if (cachedCats) {
-        setCategories(cachedCats)
-        return
-      }
     }
     setCategories((prev) => prev.length > 0 ? prev : DEFAULT_CATEGORIES)
   }, [scriptUrl])
@@ -193,6 +184,9 @@ function App() {
     setShowSetup(false)
   }
 
+  const pendingForMonth = useMemo(() => getPendingForMonth(monthName), [monthName, pendingCount])
+  const sendingForMonth = useMemo(() => sendingExpenses.filter((e) => e.month === monthName), [sendingExpenses, monthName])
+
   if (showSetup) {
     return (
       <>
@@ -237,15 +231,15 @@ function App() {
           <ExpenseList
             expenses={expenses}
             loading={loading}
-            pending={getPendingForMonth(monthName)}
-            sending={sendingExpenses.filter((e) => e.month === monthName)}
+            pending={pendingForMonth}
+            sending={sendingForMonth}
             onEdit={setEditingExpense}
           />
         </div>
 
         {/* FAB */}
         <button
-          onClick={() => handleOpenAddModal()}
+          onClick={handleOpenAddModal}
           className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
         >
           <Plus className="h-7 w-7" />

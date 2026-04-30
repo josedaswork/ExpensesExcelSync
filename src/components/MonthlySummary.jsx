@@ -1,7 +1,4 @@
-const fmt = (v) =>
-  v != null
-    ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v)
-    : '—'
+import { fmt } from '@/lib/utils'
 
 export default function MonthlySummary({ summary, loading }) {
   const cards = [

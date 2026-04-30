@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ArrowUpDown } from 'lucide-react'
+import { fmt } from '@/lib/utils'
 
 const COLORS = [
   'bg-blue-500',
@@ -21,9 +22,6 @@ function hashColor(str) {
   for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h)
   return COLORS[Math.abs(h) % COLORS.length]
 }
-
-const fmt = (v) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(v)
 
 export default function ExpenseList({ expenses, loading, pending = [], sending = [], onEdit }) {
   const [reversed, setReversed] = useState(true)
@@ -106,9 +104,9 @@ export default function ExpenseList({ expenses, loading, pending = [], sending =
           </p>
         </div>
       ))}
-      {displayExpenses.map((exp, i) => (
+      {displayExpenses.map((exp) => (
         <div
-          key={i}
+          key={exp.row ?? `${exp.category}-${exp.amount}`}
           className="glass-card rounded-xl p-3 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
           onClick={() => onEdit?.(exp)}
         >
