@@ -99,6 +99,11 @@ export function clearCategoriesCache() {
   localStorage.removeItem(CATEGORIES_KEY)
 }
 
+export function clearAllCache() {
+  localStorage.removeItem(CATEGORIES_KEY)
+  localStorage.removeItem(DATA_CACHE_KEY)
+}
+
 /* ---- Datos mensuales con caché offline ---- */
 
 export async function getExpenses(month) {

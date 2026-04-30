@@ -17,6 +17,7 @@ import {
   getPendingExpenses,
   DEFAULT_CATEGORIES,
   clearCategoriesCache,
+  clearAllCache,
   getCachedSummary,
   getCachedExpenses,
   getCachedCategories,
@@ -88,11 +89,7 @@ function App() {
   const loadCategories = useCallback(async () => {
     if (!scriptUrl) return
 
-    // Show cached categories instantly
-    const cachedCats = getCachedCategories()
-    if (cachedCats) setCategories(cachedCats)
-
-    // Then refresh from server
+    // Always fetch fresh categories from server
     try {
       clearCategoriesCache()
       const data = await fetchCategories()
@@ -102,6 +99,12 @@ function App() {
       }
     } catch (err) {
       console.warn('Error cargando categorías, usando fallback:', err.message)
+      // On error, try cached as fallback
+      const cachedCats = getCachedCategories()
+      if (cachedCats) {
+        setCategories(cachedCats)
+        return
+      }
     }
     setCategories((prev) => prev.length > 0 ? prev : DEFAULT_CATEGORIES)
   }, [scriptUrl])
@@ -184,6 +187,7 @@ function App() {
   }
 
   const handleSetupSave = (url) => {
+    if (url !== scriptUrl) clearAllCache()
     saveScriptUrl(url)
     setScriptUrl(url)
     setShowSetup(false)

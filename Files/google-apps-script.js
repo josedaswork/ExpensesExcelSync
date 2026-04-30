@@ -110,7 +110,7 @@ function doPost(e) {
  */
 function getCategories(ss) {
   var ws = ss.getSheetByName('(Categorías)');
-  var data = ws.getRange('E2:E30').getValues();
+  var data = ws.getRange('F2:F30').getValues();
   var categories = [];
 
   for (var i = 0; i < data.length; i++) {

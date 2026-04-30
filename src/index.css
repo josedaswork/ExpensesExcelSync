@@ -93,3 +93,23 @@ input[type="number"] {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(35, 90%, 55%);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(35, 90%, 65%);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(35, 90%, 55%) transparent;
+}
