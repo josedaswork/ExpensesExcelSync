@@ -16,6 +16,10 @@ import {
   getPendingForMonth,
   getPendingExpenses,
   DEFAULT_CATEGORIES,
+  clearCategoriesCache,
+  getCachedSummary,
+  getCachedExpenses,
+  getCachedCategories,
 } from '@/lib/sheetsApi'
 import MonthSelector from '@/components/MonthSelector'
 import MonthlySummary from '@/components/MonthlySummary'
@@ -44,30 +48,53 @@ function App() {
   const [sendingExpenses, setSendingExpenses] = useState([])
   const queueRef = useRef([])
   const processingRef = useRef(false)
+  const loadIdRef = useRef(0)
 
   const monthName = MONTHS[selectedMonth]
 
   const loadData = useCallback(async () => {
     if (!scriptUrl) return
+
+    const currentLoadId = ++loadIdRef.current
+
+    // Show cached data instantly, or clear old month's data
+    const cachedSummary = getCachedSummary(monthName)
+    const cachedExpenses = getCachedExpenses(monthName)
+    setSummary(cachedSummary || null)
+    setExpenses(cachedExpenses?.expenses || [])
+
+    // Then refresh from server in background
     setLoading(true)
     try {
       const [s, e] = await Promise.all([
         fetchSummary(monthName),
         fetchExpenses(monthName),
       ])
+      // Discard if month changed while fetching
+      if (currentLoadId !== loadIdRef.current) return
       setSummary(s)
       setExpenses(e.expenses || [])
     } catch (err) {
-      toast.error('Error cargando datos: ' + err.message)
+      if (currentLoadId !== loadIdRef.current) return
+      if (!cachedSummary && !cachedExpenses) {
+        toast.error('Error cargando datos: ' + err.message)
+      }
     } finally {
-      setLoading(false)
+      if (currentLoadId === loadIdRef.current) setLoading(false)
     }
     setPendingCount(getPendingExpenses().length)
   }, [scriptUrl, monthName])
 
   const loadCategories = useCallback(async () => {
     if (!scriptUrl) return
+
+    // Show cached categories instantly
+    const cachedCats = getCachedCategories()
+    if (cachedCats) setCategories(cachedCats)
+
+    // Then refresh from server
     try {
+      clearCategoriesCache()
       const data = await fetchCategories()
       if (data.categories?.length > 0) {
         setCategories(data.categories)

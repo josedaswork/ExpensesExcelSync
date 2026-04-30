@@ -20,7 +20,7 @@ export default function MonthlySummary({ summary, loading }) {
       {cards.map((c) => (
         <div key={c.label} className="glass-card rounded-xl p-3">
           <p className="text-xs text-muted-foreground">{c.label}</p>
-          {loading ? (
+          {loading && !summary ? (
             <div className="h-6 w-20 bg-muted rounded animate-pulse mt-1" />
           ) : (
             <p className={`text-lg font-bold ${c.color}`}>{fmt(c.value)}</p>

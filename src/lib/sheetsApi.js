@@ -60,6 +60,23 @@ function getCacheEntry(key) {
   return entry.data
 }
 
+export function getCachedSummary(month) {
+  return getCacheEntry('summary_' + month)
+}
+
+export function getCachedExpenses(month) {
+  return getCacheEntry('expenses_' + month)
+}
+
+export function getCachedCategories() {
+  const cached = localStorage.getItem(CATEGORIES_KEY)
+  if (!cached) return null
+  try {
+    const { data } = JSON.parse(cached)
+    return data.categories?.length > 0 ? data.categories : null
+  } catch { return null }
+}
+
 /* ---- Categorías ---- */
 
 export async function getCategories() {

@@ -28,7 +28,7 @@ const fmt = (v) =>
 export default function ExpenseList({ expenses, loading, pending = [], sending = [], onEdit }) {
   const [reversed, setReversed] = useState(true)
 
-  if (loading) {
+  if (loading && expenses.length === 0 && pending.length === 0 && sending.length === 0) {
     return (
       <div className="space-y-2">
         {[1, 2, 3, 4].map((i) => (
