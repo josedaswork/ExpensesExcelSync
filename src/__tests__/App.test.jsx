@@ -23,6 +23,7 @@ vi.mock('@/lib/sheetsApi', () => ({
   getPendingForMonth: vi.fn(() => []),
   getCachedSummary: vi.fn(() => null),
   getCachedExpenses: vi.fn(() => null),
+  getCachedCategories: vi.fn(() => null),
   clearAllCache: vi.fn(),
   DEFAULT_CATEGORIES: ['Restaurante', 'Transporte', 'Ocio'],
 }));
@@ -50,7 +51,7 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText('Ingresos')).toBeInTheDocument();
       expect(screen.getByText('Gastos Fijos')).toBeInTheDocument();
-      expect(screen.getByText('Ahorro')).toBeInTheDocument();
+      expect(screen.getByText('Restante mes')).toBeInTheDocument();
     });
   });
 

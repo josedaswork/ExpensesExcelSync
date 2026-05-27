@@ -66,11 +66,24 @@ export function getCachedExpenses(month) {
   return getCacheEntry('expenses_' + month)
 }
 
+export function getCachedCategories() {
+  return getCacheEntry('categories')
+}
+
 /* ---- Categorías ---- */
 
 export async function getCategories() {
-  const data = await callApi({ action: 'getCategories' })
-  return data
+  try {
+    const data = await callApi({ action: 'getCategories' })
+    if (data.categories?.length > 0) {
+      setCacheEntry('categories', data)
+    }
+    return data
+  } catch (err) {
+    const cached = getCacheEntry('categories')
+    if (cached) return cached
+    throw err
+  }
 }
 
 export function clearAllCache() {

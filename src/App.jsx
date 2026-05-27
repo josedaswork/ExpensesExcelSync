@@ -19,6 +19,7 @@ import {
   clearAllCache,
   getCachedSummary,
   getCachedExpenses,
+  getCachedCategories,
 } from '@/lib/sheetsApi'
 import MonthSelector from '@/components/MonthSelector'
 import MonthlySummary from '@/components/MonthlySummary'
@@ -87,7 +88,14 @@ function App() {
   const loadCategories = useCallback(async () => {
     if (!scriptUrl) return
 
-    // Always fetch fresh categories from server
+    // Show cached categories instantly (or fallback), then refresh in background.
+    const cachedCategories = getCachedCategories()
+    if (cachedCategories?.categories?.length > 0) {
+      setCategories(cachedCategories.categories)
+    } else {
+      setCategories((prev) => prev.length > 0 ? prev : DEFAULT_CATEGORIES)
+    }
+
     try {
       const data = await fetchCategories()
       if (data.categories?.length > 0) {
@@ -95,9 +103,8 @@ function App() {
         return
       }
     } catch (err) {
-      console.warn('Error cargando categorías, usando fallback:', err.message)
+      console.warn('Error refrescando categorías en background:', err.message)
     }
-    setCategories((prev) => prev.length > 0 ? prev : DEFAULT_CATEGORIES)
   }, [scriptUrl])
 
   useEffect(() => { loadCategories() }, [loadCategories])

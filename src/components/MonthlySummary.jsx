@@ -1,14 +1,25 @@
 import { fmt } from '@/lib/utils'
 
 export default function MonthlySummary({ summary, loading }) {
+  const savingTarget = summary?.desiredSavings
+  const remainingMonth =
+    summary?.remainingMonth ??
+    summary?.savings ??
+    ((summary?.income ?? 0) - (summary?.fixedExpenses ?? 0) - (summary?.variableExpenses ?? 0) - (savingTarget ?? 0))
+
   const cards = [
     { label: 'Ingresos', value: summary?.income, color: 'text-green-400' },
     { label: 'Gastos Fijos', value: summary?.fixedExpenses, color: 'text-orange-400' },
     { label: 'Gastos Variables', value: summary?.variableExpenses, color: 'text-red-400' },
     {
-      label: 'Ahorro',
-      value: summary?.savings,
-      color: summary?.savings >= 0 ? 'text-green-400' : 'text-red-400',
+      label: 'Meta Ahorro',
+      value: savingTarget,
+      color: 'text-blue-300',
+    },
+    {
+      label: 'Restante mes',
+      value: remainingMonth,
+      color: remainingMonth >= 0 ? 'text-green-400' : 'text-red-400',
     },
   ]
 

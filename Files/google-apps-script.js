@@ -189,7 +189,7 @@ function getExpenses(ss, month) {
 
 /**
  * Devuelve el resumen económico de un mes
- * (ingresos, gastos fijos, gastos variables, ahorro).
+ * (ingresos, gastos fijos, gastos variables, meta ahorro y restante mes).
  */
 function getSummary(ss, month) {
   var ws = ss.getSheetByName(month);
@@ -219,13 +219,23 @@ function getSummary(ss, month) {
     }
   }
 
+  // Meta ahorro fijada en la plantilla: columna I, fila 3.
+  var desiredSavings = parseFloat(ws.getRange(3, 9).getValue()) || 0;
+  var remainingMonth = income - fixed - variable - desiredSavings;
+
+  // Mantiene compatibilidad con clientes previos que lean savings/remainingForExpenses.
+  var legacyRemaining = income - fixed - variable;
+
   return {
     month: month,
     income: income,
     fixedExpenses: fixed,
     variableExpenses: variable,
     totalExpenses: fixed + variable,
-    savings: income - fixed - variable
+    desiredSavings: desiredSavings,
+    remainingMonth: remainingMonth,
+    remainingForExpenses: legacyRemaining,
+    savings: remainingMonth
   };
 }
 
