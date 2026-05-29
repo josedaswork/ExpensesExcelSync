@@ -3,6 +3,7 @@ import { Toaster, toast } from 'sonner'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { RefreshCw, Plus, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { fmt } from '@/lib/utils'
 import {
   getScriptUrl,
   setScriptUrl as saveScriptUrl,
@@ -12,6 +13,7 @@ import {
   addExpenseDirect,
   addToPending,
   updateExpense as apiUpdateExpense,
+  deleteExpense as apiDeleteExpense,
   syncPendingExpenses,
   getPendingForMonth,
   getPendingExpenses,
@@ -43,6 +45,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
+  const [deletingExpense, setDeletingExpense] = useState(null)
   const [pendingCount, setPendingCount] = useState(getPendingExpenses().length)
   const [syncing, setSyncing] = useState(false)
   const [sendingExpenses, setSendingExpenses] = useState([])
@@ -162,6 +165,25 @@ function App() {
     }
   }
 
+  const handleDeleteExpense = (expense) => {
+    setDeletingExpense(expense)
+  }
+
+  const confirmDeleteExpense = async () => {
+    const expense = deletingExpense
+    if (!expense) return
+    setDeletingExpense(null)
+    const toastId = toast.loading('Eliminando gasto...')
+    try {
+      await apiDeleteExpense(monthName, expense.row, expense.category, expense.amount)
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+      toast.success('Gasto eliminado', { id: toastId })
+      loadData()
+    } catch (err) {
+      toast.error('Error eliminando: ' + err.message, { id: toastId })
+    }
+  }
+
   const handleSync = async () => {
     setSyncing(true)
     try {
@@ -241,6 +263,7 @@ function App() {
             pending={pendingForMonth}
             sending={sendingForMonth}
             onEdit={setEditingExpense}
+            onDelete={handleDeleteExpense}
           />
         </div>
 
@@ -268,6 +291,21 @@ function App() {
           onSave={handleEditExpense}
           onClose={() => setEditingExpense(null)}
         />
+      )}
+
+      {deletingExpense && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDeletingExpense(null)}>
+          <div className="bg-background rounded-2xl p-6 mx-6 max-w-sm w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-foreground mb-2">¿Eliminar gasto?</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Se eliminará <span className="font-medium text-foreground">{deletingExpense.category}</span> — {fmt(deletingExpense.amount)} del Excel.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="ghost" onClick={() => setDeletingExpense(null)}>Cancelar</Button>
+              <Button variant="destructive" onClick={confirmDeleteExpense}>Eliminar</Button>
+            </div>
+          </div>
+        </div>
       )}
 
       <Toaster />

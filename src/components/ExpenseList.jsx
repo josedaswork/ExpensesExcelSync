@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ArrowUpDown } from 'lucide-react'
+import { useState, useRef, useCallback } from 'react'
+import { ArrowUpDown, Trash2 } from 'lucide-react'
 import { fmt } from '@/lib/utils'
 
 const COLORS = [
@@ -23,7 +23,7 @@ function hashColor(str) {
   return COLORS[Math.abs(h) % COLORS.length]
 }
 
-export default function ExpenseList({ expenses, loading, pending = [], sending = [], onEdit }) {
+export default function ExpenseList({ expenses, loading, pending = [], sending = [], onEdit, onDelete }) {
   const [reversed, setReversed] = useState(true)
 
   if (loading && expenses.length === 0 && pending.length === 0 && sending.length === 0) {
@@ -105,26 +105,106 @@ export default function ExpenseList({ expenses, loading, pending = [], sending =
         </div>
       ))}
       {displayExpenses.map((exp) => (
-        <div
+        <SwipeableRow
           key={exp.row ?? `${exp.category}-${exp.amount}`}
-          className="glass-card rounded-xl p-3 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
-          onClick={() => onEdit?.(exp)}
-        >
-          <div
-            className={`w-10 h-10 rounded-full ${hashColor(exp.category)} flex items-center justify-center`}
-          >
-            <span className="text-white font-bold text-sm">
-              {exp.category.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <p className="flex-1 min-w-0 text-sm font-medium text-foreground truncate">
-            {exp.category}
-          </p>
-          <p className="text-sm font-bold text-foreground whitespace-nowrap">
-            {fmt(exp.amount)}
-          </p>
-        </div>
+          expense={exp}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       ))}
+    </div>
+  )
+}
+
+function SwipeableRow({ expense, onEdit, onDelete }) {
+  const startXRef = useRef(0)
+  const currentXRef = useRef(0)
+  const rowRef = useRef(null)
+  const [swiped, setSwiped] = useState(false)
+  const swipingRef = useRef(false)
+
+  const THRESHOLD = 70
+
+  const handleTouchStart = useCallback((e) => {
+    startXRef.current = e.touches[0].clientX
+    currentXRef.current = 0
+    swipingRef.current = false
+  }, [])
+
+  const handleTouchMove = useCallback((e) => {
+    const diff = startXRef.current - e.touches[0].clientX
+    currentXRef.current = diff
+    if (diff > 10) swipingRef.current = true
+    const translateX = Math.max(-THRESHOLD, Math.min(0, -diff))
+    if (rowRef.current) {
+      rowRef.current.style.transform = `translateX(${translateX}px)`
+      rowRef.current.style.transition = 'none'
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    if (!rowRef.current) return
+    rowRef.current.style.transition = 'transform 0.2s ease-out'
+    if (currentXRef.current >= THRESHOLD) {
+      rowRef.current.style.transform = `translateX(-${THRESHOLD}px)`
+      setSwiped(true)
+    } else {
+      rowRef.current.style.transform = 'translateX(0)'
+      setSwiped(false)
+    }
+  }, [])
+
+  const handleClick = useCallback(() => {
+    if (swipingRef.current) return
+    if (swiped) {
+      if (rowRef.current) {
+        rowRef.current.style.transition = 'transform 0.2s ease-out'
+        rowRef.current.style.transform = 'translateX(0)'
+      }
+      setSwiped(false)
+      return
+    }
+    onEdit?.(expense)
+  }, [swiped, onEdit, expense])
+
+  const handleDelete = useCallback(() => {
+    onDelete?.(expense)
+  }, [onDelete, expense])
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Delete button behind the row */}
+      <div className="absolute inset-y-0 right-0 flex items-center z-0">
+        <button
+          onClick={handleDelete}
+          className="h-full w-[70px] bg-destructive flex items-center justify-center text-destructive-foreground"
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
+      </div>
+      {/* Swipeable content */}
+      <div
+        ref={rowRef}
+        className="glass-card rounded-xl p-3 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform relative z-10 bg-background"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={handleClick}
+      >
+        <div
+          className={`w-10 h-10 rounded-full ${hashColor(expense.category)} flex items-center justify-center`}
+        >
+          <span className="text-white font-bold text-sm">
+            {expense.category.charAt(0).toUpperCase()}
+          </span>
+        </div>
+        <p className="flex-1 min-w-0 text-sm font-medium text-foreground truncate">
+          {expense.category}
+        </p>
+        <p className="text-sm font-bold text-foreground whitespace-nowrap">
+          {fmt(expense.amount)}
+        </p>
+      </div>
     </div>
   )
 }

@@ -155,6 +155,16 @@ export async function updateExpense(month, row, oldCategory, oldAmount, newCateg
   })
 }
 
+export async function deleteExpense(month, row, category, amount) {
+  return await callApi({
+    action: 'deleteExpense',
+    month,
+    row: String(row),
+    category,
+    amount: String(amount),
+  })
+}
+
 export async function syncPendingExpenses() {
   const pending = getPendingExpenses()
   if (pending.length === 0) return { synced: 0, failed: 0 }

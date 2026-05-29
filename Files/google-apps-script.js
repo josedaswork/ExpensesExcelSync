@@ -59,6 +59,14 @@ function doGet(e) {
         e.parameter.newCategory,
         parseFloat(e.parameter.newAmount)
       );
+    } else if (action === 'deleteExpense') {
+      result = deleteExpense(
+        ss,
+        e.parameter.month,
+        parseInt(e.parameter.row, 10),
+        e.parameter.category,
+        parseFloat(e.parameter.amount)
+      );
     } else {
       result = { error: 'Acción desconocida: ' + action };
     }
@@ -89,6 +97,14 @@ function doPost(e) {
         parseFloat(data.oldAmount),
         data.newCategory,
         parseFloat(data.newAmount)
+      );
+    } else if (data.action === 'deleteExpense') {
+      result = deleteExpense(
+        ss,
+        data.month,
+        parseInt(data.row, 10),
+        data.category,
+        parseFloat(data.amount)
       );
     } else {
       result = { error: 'Acción desconocida' };
@@ -335,6 +351,66 @@ function updateExpense(ss, month, row, oldCategory, oldAmount, newCategory, newA
     row: targetRow,
     category: newCategory,
     amount: newAmount,
+    month: month
+  };
+}
+
+/**
+ * Elimina un gasto variable del mes indicado.
+ *
+ * Borra el contenido de la fila (categoría y cantidad).
+ * Primero verifica que la fila contenga los valores esperados;
+ * si no coinciden, busca el gasto por categoría + importe.
+ */
+function deleteExpense(ss, month, row, category, amount) {
+  var ws = ss.getSheetByName(month);
+  if (!ws) return { error: 'Mes no encontrado: ' + month };
+
+  var cols = findVariableExpenseCols(ws);
+
+  var currentCat = String(ws.getRange(row, cols.catCol).getValue()).trim();
+  var currentAmt = parseFloat(ws.getRange(row, cols.amtCol).getValue()) || 0;
+
+  var targetRow = row;
+
+  if (currentCat !== category || Math.abs(currentAmt - amount) > 0.01) {
+    var lastRow = ws.getLastRow();
+    targetRow = -1;
+
+    if (lastRow >= 13) {
+      var numRows = lastRow - 12;
+      var catData = ws.getRange(13, cols.catCol, numRows, 1).getValues();
+      var amtData = ws.getRange(13, cols.amtCol, numRows, 1).getValues();
+      var bestDist = Infinity;
+
+      for (var i = 0; i < catData.length; i++) {
+        var r = i + 13;
+        var cat = String(catData[i][0]).trim();
+        var amt = parseFloat(amtData[i][0]) || 0;
+
+        if (cat === category && Math.abs(amt - amount) < 0.01) {
+          var dist = Math.abs(r - row);
+          if (dist < bestDist) {
+            bestDist = dist;
+            targetRow = r;
+          }
+        }
+      }
+    }
+
+    if (targetRow === -1) {
+      return { error: 'No se encontró el gasto a eliminar' };
+    }
+  }
+
+  ws.getRange(targetRow, cols.catCol).clearContent();
+  ws.getRange(targetRow, cols.amtCol).clearContent();
+
+  return {
+    success: true,
+    row: targetRow,
+    category: category,
+    amount: amount,
     month: month
   };
 }
